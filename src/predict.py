@@ -1,3 +1,4 @@
+
 import preprocessing_data
 import os
 import pickle
@@ -61,3 +62,4 @@ df_new_house.columns = df_new_house.columns.astype(str)
 predicted_price = predict_house_price(df_new_house, rf_house_model)
 
 print("Predicted price for the new house:", predicted_price)
+

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
 import pickle
 import gzip
 import warnings
@@ -20,16 +21,22 @@ from sklearn.linear_model import LinearRegression
 
 
 def importing_data(file):
+
     # Get the path to the data directory
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     
     # Construct the full path to data_properties.csv
+
     file_path = os.path.join(data_dir, file)
+
+    file_path = os.path.join(data_dir, 'data_properties.csv')
+
     
     # Read the CSV file
     df = pd.read_csv(file_path)
     
     # Filter houses and apartments
+
     df_house = df[df['type'] == 'HOUSE']
     df_apartment = df[df['type'] == 'APARTMENT']
 
@@ -63,6 +70,7 @@ def create_features(df):
 
 
 def cleaning_data(df):
+
     ## Handling Outliers
     Q1 = df['price_main'].quantile(0.25) # Calculate Q1
     Q3 = df['price_main'].quantile(0.75) # Calculate Q3
@@ -79,9 +87,10 @@ def cleaning_data(df):
 
     # Drop columns with more than 50% missing values
     df.drop(columns=get_column_missing_values(percentage_missing_all), inplace=True)  # Modify DataFrame inplace
-    
+
     # Drop 'id' and 'locality' columns
     df.drop(columns=['id', 'locality', 'postalcode'], inplace=True)
+
 
     return df
 
@@ -99,6 +108,7 @@ def impute_missing_values(X_train, X_test):
     # Impute missing values for numerical features
     numerical_imputer = SimpleImputer(strategy='mean')
     numerical_features = X_train.select_dtypes(include=['int64', 'float64']).columns
+
     X_train[numerical_features] = numerical_imputer.fit_transform(X_train[numerical_features])
     X_test[numerical_features] = numerical_imputer.transform(X_test[numerical_features])
 
@@ -255,6 +265,10 @@ def load_model(file):
     # Define the file path for the compressed model
     model_file_path = os.path.join(os.path.dirname(__file__), '..', 'models', file)
 
+    # Check if the file exists
+    if not os.path.exists(model_file_path):
+        raise FileNotFoundError(f"The specified model file '{model_file_path}' does not exist.")
+
     # Load the compressed model file
     with gzip.open(model_file_path, 'rb') as f:
         loaded_model_bytes = f.read()
@@ -282,8 +296,7 @@ save_model(model_rf_house, 'HOUSE')
 save_model(model_rf_ap, 'APARTMENT')
 
 
-lr_house_model = load_model('trained_LinearRegression()_HOUSE.pkl')
-lr_apartment_model = load_model('trained_LinearRegression()_APARTMENT.pkl')
-rf_house_model = load_model('trained_RandomForestRegressor(random_state=42)_HOUSE.pkl')
-rf_apartment_model = load_model('trained_RandomForestRegressor(random_state=42)_APARTMENT.pkl')
-
+lr_house_model = load_model('trained_LinearRegression()_HOUSE.pkl.gz')
+lr_apartment_model = load_model('trained_LinearRegression()_APARTMENT.pkl.gz')
+rf_house_model = load_model('trained_RandomForestRegressor(random_state=42)_HOUSE.pkl.gz')
+rf_apartment_model = load_model('trained_RandomForestRegressor(random_state=42)_APARTMENT.pkl.gz')
