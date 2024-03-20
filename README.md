@@ -3,8 +3,8 @@
 
 ## Description
 This project focuses on creating a machine learning model to predict real estate property prices in Belgium using data from Immoweb.
-It uses RandomForestRegression to train the model.
-At the moment, the R^2 score of the test set is 0.61
+It uses Linear Regression and RandomForestRegression to train the model.
+At the moment, best the R^2 score of the test set for houses is 0.74 and for apartments is 0.71
 
 ![Alt text](pics/machine_learning_1.png)
 
@@ -14,12 +14,19 @@ At the moment, the R^2 score of the test set is 0.61
     ├── data
     │   └── data_properties.csv
     │
+    ├── models
+    │   ├── trained_LinearRegression()_APARTMENT.pkl.gz
+    │   ├── trained_LinearRegression()_HOUSE.pkl.gz
+    │   ├── trained_RandomForestRegressor(random_state=42)_APARTMENT.pkl.gz
+    │   └── trained_RandomForestRegressor(random_state=42)_HOUSE.pkl.gz
+    │
     ├── pics
     │   └── machine_learning_1.png
     │       
     ├── src
     │   ├── immo_ml.ipynb
     │   ├── predict.py
+    │   ├── preprocessing_data.py
     │   └── train.py
     │
     ├── .gitignore
@@ -46,32 +53,6 @@ To get started with Immo Eliza ML, follow these simple steps:
     Exploration and Usage:
     You're all set! You can now train your model using train.py, make predictions using predict.py, and work with the data in the data directory. Enjoy!
 
-## 🛎️ Usage
-To use this repository, follow these steps:
-
-1. **Clone the Repository**: 
-    - Clone the repository to your local machine using the following command:
-    ```bash
-    git clone https://github.com/mahsanazar/immo-eliza-DAMI-analysis.git
-    ```
-
-2. **Navigate to the Project Directory**:
-    - Once cloned, navigate to the project directory:
-    ```bash
-    cd immo-eliza-DAMI-analysis
-    ```
-
-3. **Explore Analysis Notebooks**:
-    - The `analysis` directory contains Jupyter notebooks (`*.ipynb`) where you can explore various analyses performed on the data. Open these notebooks in Jupyter Notebook or JupyterLab to view the analyses and results.
-
-4. **Access Reports**:
-    - The `reports` directory includes reports generated from the analysis. These reports may contain visualizations, insights, and conclusions drawn from the data analysis.
-
-5. **Work with Data**:
-    - The `data` directory contains the dataset used for analysis. You can find both raw and clean versions of the dataset. Explore the data files to understand their structure and contents.
-
-## 📑 Sources
-- [Immoweb](https://www.immoweb.be/en) - Real estate website from which data is scraped.
 
 
 ## ⏱️ Timeline
