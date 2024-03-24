@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import csv
 import pickle
 import gzip
 import warnings
@@ -42,15 +43,15 @@ def importing_data(file):
 
     return df_house, df_apartment
 
-def get_clean_training_test_data(df):
+def get_clean_training_test_data(df, type):
     create_features(df)
     df = cleaning_data(df)
     X_train, X_test, y_train, y_test = split_into_test_and_training(df)
-    X_train, X_test = impute_missing_values(X_train, X_test)
-    X_train, X_test = encode_data(X_train, X_test)
-    X_train, X_test = standardize_data(X_train, X_test)
+    X_train, X_test, num_imp, cat_imp = impute_missing_values(X_train, X_test,type)
+    X_train, X_test, ohe = encode_data(X_train, X_test)
+    X_train, X_test, scaler = standardize_data(X_train, X_test)
     
-    return X_train, X_test, y_train, y_test
+    return X_train, X_test, y_train, y_test, num_imp, cat_imp, ohe, scaler
 
 
 def create_features(df):
@@ -84,13 +85,12 @@ def cleaning_data(df):
 
     missing_data_all = df.isna().sum()
     percentage_missing_all = round(missing_data_all * 100 / len(df), 0)
+    df = df.drop(columns=get_column_missing_values(percentage_missing_all)).copy()
+    df = df.drop(columns=['id', 'locality', 'postalcode']).copy()
 
-    # Drop columns with more than 50% missing values
-    df.drop(columns=get_column_missing_values(percentage_missing_all), inplace=True)  # Modify DataFrame inplace
 
-    # Drop 'id' and 'locality' columns
-    df.drop(columns=['id', 'locality', 'postalcode'], inplace=True)
 
+    # print(f'COLUMNS IN DF AFTER CLEANING : {list(df.columns)} ')
 
     return df
 
@@ -102,8 +102,20 @@ def get_column_missing_values(percentage_missing_all):
             columns_to_drop.append(column)
     return columns_to_drop
 
+def get_column_names(X_train):
+    return list(X_train.columns)
 
-def impute_missing_values(X_train, X_test):
+
+def impute_missing_values(X_train, X_test,type):
+
+    save_column_names(X_train,type)
+
+    numerical_features = X_train.select_dtypes(include=['int64', 'float64']).columns
+    print("Numerical Features:", numerical_features)
+
+    # Identify categorical features
+    categorical_features = X_train.select_dtypes(include=['object']).columns
+    print("Categorical Features:", categorical_features)
 
     # Impute missing values for numerical features
     numerical_imputer = SimpleImputer(strategy='mean')
@@ -117,9 +129,13 @@ def impute_missing_values(X_train, X_test):
     categorical_features = X_train.select_dtypes(include=['object']).columns
     X_train[categorical_features] = categorical_imputer.fit_transform(X_train[categorical_features])
     X_test[categorical_features] = categorical_imputer.transform(X_test[categorical_features])
-    return X_train, X_test
+
+
+
+    return X_train, X_test, numerical_imputer, categorical_imputer
 
 def encode_data(X_train, X_test):
+
     # Collect categorical columns
     categorical_columns = X_train.select_dtypes(include=['object']).columns
 
@@ -142,9 +158,9 @@ def encode_data(X_train, X_test):
     X_train_encoded_full = pd.concat([X_train.drop(columns=categorical_columns), X_train_encoded_df], axis=1)
     X_test_encoded_full = pd.concat([X_test.drop(columns=categorical_columns), X_test_encoded_df], axis=1)
 
-    print(X_train_encoded_full.head())
 
-    return X_train_encoded_full, X_test_encoded_full
+
+    return X_train_encoded_full, X_test_encoded_full, onehot_encoder
 
 def standardize_data(X_train, X_test):
     # Assuming you have a list of column names (feature names) for X_train and X_test
@@ -161,7 +177,7 @@ def standardize_data(X_train, X_test):
     X_train = pd.DataFrame(X_train, columns=column_names)
     X_test_ = pd.DataFrame(X_test, columns=column_names)
 
-    return X_train, X_test
+    return X_train, X_test, scaler
 
 
 def split_into_test_and_training(df):
@@ -249,54 +265,80 @@ def random_forest_regression(X_train, X_test, y_train, y_test, type_prop):
 
 
 def save_model(model, type_prop):
-    # Define the file path for saving the model
-    model_file_path = os.path.join(os.path.dirname(__file__), '..', 'models', f'trained_{model}_{type_prop}.pkl.gz')
+    model_type = type(model).__name__
+    if model_type == 'LinearRegression':
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'linear_regression', f'trained_{model_type}_{type_prop}.pkl.gz')
+    else:
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'random_forest_regression', f'trained_{model_type}_{type_prop}.pkl.gz')
 
-    # Pickle the model
     model_bytes = pickle.dumps(model)
-
-    # Compress and save the pickled model
-    with gzip.open(model_file_path, 'wb') as f:
+    with gzip.open(model_path, 'wb') as f:
         f.write(model_bytes)
+    print(f"Model saved successfully at: {model_path}")
 
-    print(f"Model saved successfully at: {model_file_path}")
+def save_preprocessing(num_imp, cat_imp, encoder, scaler, type_prop):
+    # Define the file paths for saving the models
+    if type_prop == 'HOUSE':
+        numImp_file_path = os.path.join('preprocess_models/house', f'trained_num_imp_{type_prop}.pkl.gz')
+        catImp_file_path = os.path.join('preprocess_models/house', f'trained_cat_imp_{type_prop}.pkl.gz')
+        encoder_file_path = os.path.join('preprocess_models/house', f'trained_encoder_{type_prop}.pkl.gz')
+        scaler_file_path = os.path.join('preprocess_models/house', f'trained_scaler_{type_prop}.pkl.gz')
+    else:
+        numImp_file_path = os.path.join('preprocess_models/apartment', f'trained_num_imp_{type_prop}.pkl.gz')
+        catImp_file_path = os.path.join('preprocess_models/apartment', f'trained_cat_imp_{type_prop}.pkl.gz')
+        encoder_file_path = os.path.join('preprocess_models/apartment', f'trained_encoder_{type_prop}.pkl.gz')
+        scaler_file_path = os.path.join('preprocess_models/apartment', f'trained_scaler_{type_prop}.pkl.gz')
 
-def load_model(file):
-    # Define the file path for the compressed model
-    model_file_path = os.path.join(os.path.dirname(__file__), '..', 'models', file)
+    # Pickle and compress the imputer object
+    with gzip.open(numImp_file_path, 'wb') as f:
+        pickle.dump(num_imp, f)
+    print(f"Imputer saved successfully at: {numImp_file_path}")
 
-    # Check if the file exists
-    if not os.path.exists(model_file_path):
-        raise FileNotFoundError(f"The specified model file '{model_file_path}' does not exist.")
+        # Pickle and compress the imputer object
+    with gzip.open(catImp_file_path, 'wb') as f:
+        pickle.dump(cat_imp, f)
+    print(f"Imputer saved successfully at: {catImp_file_path}")
 
-    # Load the compressed model file
-    with gzip.open(model_file_path, 'rb') as f:
-        loaded_model_bytes = f.read()
+    # Pickle and compress the encoder object
+    with gzip.open(encoder_file_path, 'wb') as f:
+        pickle.dump(encoder, f)
+    print(f"Encoder saved successfully at: {encoder_file_path}")
 
-    # Unpickle the model bytes
-    loaded_model = pickle.loads(loaded_model_bytes)
+    # Pickle and compress the scaler object
+    with gzip.open(scaler_file_path, 'wb') as f:
+        pickle.dump(scaler, f)
+    print(f"Scaler saved successfully at: {scaler_file_path}")
 
-    return loaded_model
 
+def save_column_names(X_train, type):
+    print(f'THE TYPE OF THIS IS : {type} ')
+    column_names_path = os.path.join(os.path.dirname(__file__), '..', 'column_names', f'column_names_{type}.csv')
+    column_names = get_column_names(X_train)
+    # Open the file in write mode and write the data
+    with open(column_names_path, "w", newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(column_names)
     
 df_house, df_apartment = importing_data('data_properties.csv')
 
-X_train_house, X_test_house, y_train_house, y_test_house= get_clean_training_test_data(df_house)
-X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment = get_clean_training_test_data(df_apartment)
+X_train_house, X_test_house, y_train_house, y_test_house, num_imp_house, cat_imp_house, ohe_house, scaler_house= get_clean_training_test_data(df_house, 'HOUSE')
+
+print(list(X_train_house.columns))
 
 model_lr_house, r2_score_lr_house = linear_regression_model(X_train_house, X_test_house, y_train_house, y_test_house, 'HOUSE')
-model_lr_ap, r2_score_lr_ap = linear_regression_model(X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment, 'APARTMENT')
-
 model_rf_house, r2_score_rf_house = random_forest_regression(X_train_house, X_test_house, y_train_house, y_test_house, 'HOUSE')
-model_rf_ap, r2_score_rf_ap = random_forest_regression(X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment, 'APARTMENT')
-
 save_model(model_lr_house, 'HOUSE')
-save_model(model_lr_ap, 'APARTMENT')
 save_model(model_rf_house, 'HOUSE')
+save_preprocessing(num_imp_house, cat_imp_house, ohe_house, scaler_house,'HOUSE')
+
+X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment, num_imp_apartment, cat_imp_apartment, ohe_apartment, scaler_apartment = get_clean_training_test_data(df_apartment,'APARTMENT')
+model_lr_ap, r2_score_lr_ap = linear_regression_model(X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment,'APARTMENT')
+model_rf_ap, r2_score_rf_ap = random_forest_regression(X_train_apartment, X_test_apartment, y_train_apartment, y_test_apartment,'APARTMENT')
+
+
+save_model(model_lr_ap, 'APARTMENT')
 save_model(model_rf_ap, 'APARTMENT')
+save_preprocessing(num_imp_apartment, cat_imp_apartment, ohe_apartment, scaler_apartment, 'APARTMENT')
 
 
-lr_house_model = load_model('trained_LinearRegression()_HOUSE.pkl.gz')
-lr_apartment_model = load_model('trained_LinearRegression()_APARTMENT.pkl.gz')
-rf_house_model = load_model('trained_RandomForestRegressor(random_state=42)_HOUSE.pkl.gz')
-rf_apartment_model = load_model('trained_RandomForestRegressor(random_state=42)_APARTMENT.pkl.gz')
+
