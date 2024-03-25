@@ -88,8 +88,16 @@ def cleaning_data(df):
     df = df.drop(columns=get_column_missing_values(percentage_missing_all)).copy()
     df = df.drop(columns=['id', 'locality', 'postalcode']).copy()
 
+    # List of subtype values to drop
+    subtypes_to_drop_houses = ['APARTMENT_BLOCK', 'EXCEPTIONAL_PROPERTY', 'FARMHOUSE', 'COUNTRY_COTTAGE', 'OTHER_PROPERTY', 'KOT', 'SERVICE_FLAT' ]
+    # Create a boolean mask to identify rows with the specified subtypes
+    mask = df['subtype'].isin(subtypes_to_drop_houses)
+    # Drop rows with specified subtypes
+    df = df[~mask]
 
-
+    print(df['subtype'].value_counts())
+    
+ 
     # print(f'COLUMNS IN DF AFTER CLEANING : {list(df.columns)} ')
 
     return df

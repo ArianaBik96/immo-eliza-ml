@@ -61,9 +61,7 @@ def preprocess_data(df, column_names):
 
     # Add the missing columns to new_house_data and assign them a value of 0
     for col in missing_columns:
-        df[col] = 0
-
-    print(f'THESE ARE THE COLUMNS OF column_names {column_names}')
+        df[col] = None
 
     # Order the columns of new_house_data as per column_names
     df = OrderedDict((col, df[col]) for col in column_names)
@@ -102,23 +100,22 @@ def predict_apartment_price(df, model):
     
     # Make predictions
     predicted_price = model.predict(df_processed)
-    # Convert the predicted price to a scalar value
-    predicted_price_scalar = predicted_price[0]
-    # Format the predicted price with dot as decimal separator and comma as thousand separator
-    formatted_price = "{:,.2f}".format(predicted_price_scalar).replace(",", " ")
-    return formatted_price
 
+    # Get the scalar predicted price
+    predicted_price_scalar = predicted_price[0]
+
+    return predicted_price_scalar
 
 # Load the trained Random Forest model
 rf_house_model = load_model('trained_RandomForestRegressor_APARTMENT.pkl.gz')
 
 
 property_data = {
-    'district': ['Brussel'],
+    'district': ['Antwerpen'],
     'type': ['APARTMENT'],
-    'epcScores': ['A+'],
-    'bedrooms': [3],
-    'surface': [120],
+    'epcScores': ['A'],
+    'bedrooms': [2],
+    'surface': [86],
     'facadeCount': [2],
 }
 
